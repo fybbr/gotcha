@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 
+import eventparser
+import entities
+
 ##
 ## Provider base blass
 ##
 class Provider(object): 
     connection_name = 'none'
     connection_port = 'none'    
-    opmode = 'unknow'         
 
     def __init__(self, conn_name='', conn_port=''):
         self.connection_name = conn_name
@@ -21,7 +23,7 @@ class Provider(object):
     def parse(self, row):
         pass
     
-    def read(self, From=''):
+    def read(self):
         pass
 
 ##
@@ -33,7 +35,6 @@ class FIXLogProvider(Provider):
     
     def __init__(self, conn_name='', conn_port=''):
         Provider.__init__(self, conn_name, conn_port)
-        self.opmode = 'pull'
 
     def close(self):
         Provider.close(self)
@@ -64,24 +65,60 @@ class FIXLogProvider(Provider):
         else:
             return({})
                     
-    def read(self, From=''):
-        Provider.read(self, From)        
+    def read(self):
+        Provider.read(self)        
         rows = []
         for row in self.fd:
             parsed = self.parse(row)
             if parsed != {}:
                 rows.append(parsed)
-        return(rows)
+        return rows
 
 ##
 ## Apama provider
 ##    
 class ApamaProvider(Provider):
+    
+    def parse(self, event):
+        # Extract event type and payload from event        
+        try:
+            i = event.index('(')
+            eventtype = event[0:i]
+            payload = event[i+1:len(event)-2]
+        except:
+            eventtype = None
+            payload = None
 
-    def __init__(self, conn_name='', conn_port=''):
-        Provider.__init__(self, conn_name, conn_port)
-        self.opmode = 'push'
-            
-    def read(self, From=''):
-        Provider.read(self, From)
-        print('==> read(' + From + ') ' + self.opmode)
+        # Creates a parser for the event type        
+        parser = eventparser.Factory().create(eventtype)
+        elements = parser.parse(payload)
+        
+        return eventtype, elements
+    
+    # Process Apama events        
+    def process(self, event):
+        
+        # Black list
+        # Strings to be discarded
+        try:
+            event.index('BATCH')
+            return None,None
+        except ValueError:
+            pass
+        
+        eventtype, body = self.parse(event)
+        return eventtype, body
+    
+    def produceOrder(self, body):
+        order = entities.Order(body['orderId'], 
+                               body['extra']['timestamp'],
+                               '',
+                               '', 
+                               body['symbol'], 
+                               body['side'],
+                               body['type'])
+        return order
+    
+    def prodiceOrderEvent(self, eventtype, body):
+        pass
+    

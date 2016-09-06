@@ -1,0 +1,10 @@
+monitor EventProducer
+{
+	action onload()
+	{
+		on all wait(5.0)
+		{
+			emit "myevent(1,2,3,\"A\",\"B\",\"C\",[100,200,300],{\"a\":11,\"b\":22})" to "GOTCHA";
+		}
+	}
+}
