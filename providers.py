@@ -80,19 +80,19 @@ class FIXLogProvider(Provider):
 class ApamaProvider(Provider):
     
     def parse(self, event):
-        # Extract event type and payload from event        
+        # Extract event type and payload from event 
         try:
             i = event.index('(')
             eventtype = event[0:i]
-            payload = event[i+1:len(event)-2]
+            payload = event[i+1:len(event)-1]
+            
+            # Creates a parser for the event type        
+            parser = eventparser.Factory().create(eventtype)
+            elements = parser.parse(payload)
         except:
             eventtype = None
-            payload = None
+            elements = None
 
-        # Creates a parser for the event type        
-        parser = eventparser.Factory().create(eventtype)
-        elements = parser.parse(payload)
-        
         return eventtype, elements
     
     # Process Apama events        
@@ -110,15 +110,25 @@ class ApamaProvider(Provider):
         return eventtype, body
     
     def produceOrder(self, body):
-        order = entities.Order(body['orderId'], 
-                               body['extra']['timestamp'],
-                               '',
-                               '', 
-                               body['symbol'], 
-                               body['side'],
-                               body['type'])
+        order = entities.Order( body['orderId'], 
+                                body['extra']['timestamp'],
+                                body['extra']['EXCHANGE_ID'],
+                                body['extra']['ROUTE'], 
+                                body['symbol'], 
+                                body['side'],
+                                body['type'],
+                                body['price'],
+                                body['quantity'] )
         return order
     
-    def prodiceOrderEvent(self, eventtype, body):
-        pass
-    
+    def produceOrderEvent(self, eventtype, body):
+        i = eventtype.rindex('.')
+        evttype = eventtype[i+1:]        
+        
+        orderevt = entities.OrderEvent( body['orderId'],
+                                        body['extra']['timestamp'],
+                                        evttype,
+                                        body['origin'],
+                                        body )
+        return orderevt
+        

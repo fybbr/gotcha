@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import ast
+
 class Factory:
     def create(self, eventtype):
         if eventtype == 'com.apama.fix.ExecutionReport':
@@ -31,7 +33,6 @@ class EventParser:
                     startpos = list.index(']')
                 except ValueError:
                     return None,None
-
                     
             elif list[0] == '{':
                 try:
@@ -49,33 +50,48 @@ class EventParser:
     def parse(self, payload):
         pass
     
-    def parsesequence(self, seq):
-        try:
-            seq.index('[')
-            seq.index(']')
-            s = seq[1:len(seq)-1]
-            return(s.split(','))
-        except ValueError:
-            return None
+    # Parses any python data structure delimited by 'openchar' and
+    # 'closerchar'. The data structure must start at position zero
+    # of string 's' and the return will be the parsed structure, such
+    # as a list or a dictionary, and the remaining of the string 's'.
+    def parsestruct(self, s, openchar, closerchar):
+        endsAT = self.findouterdelimiter(s, 0, 1, openchar, closerchar)
+        
+        # Unbalance delimiters
+        if endsAT < 0:
+            return None, s
+        
+        first = ast.literal_eval(s[0:endsAT+1])
+        rest = s[endsAT+2:]
+        return first, rest
+    
+    # Almost like parsestruct, but instead of return the parsed data
+    # structure will simple discard it and will return just the
+    # remaining.    
+    def skipstruct(self, s, openchar, closerchar):
+        endsAT = self.findouterdelimiter(s, 0, 1, openchar, closerchar)
+        
+        # Unbalance delimiters
+        if endsAT < 0:
+            return s
             
-    def parsedict(self, dic):
-        try:
-            dic.index('{')
-            dic.index('}')
-            d = dic[1:len(dic)-1]
-            retdic = {}
-            try:
-                for e in d.split(','):
-                    try:
-                        tag, value = e.split(':')
-                        retdic[tag.strip('"')] = value.strip('"')
-                    except:
-                        pass
-            except:
-                pass
-            return retdic
-        except ValueError:
-            return None
+        return s[endsAT+2:]
+
+    # Returns the position of the outer delimiter. Must be called
+    #  as findouterdelimiter(string, 0, 1) and string must start
+    # with the open delimiter.
+    def findouterdelimiter(self, s, endpos, counter, openchar, closerchar):
+        if counter == 0:
+            return endpos   
+        # Chegou ao final da string e não casou    
+        if len(s) == 1:
+            return -1    
+        if s[1] == openchar:
+            return self.findouterdelimiter(s[1:], endpos+1, counter+1, openchar, closerchar)    
+        elif s[1] == closerchar:
+            return self.findouterdelimiter(s[1:], endpos+1, counter-1, openchar, closerchar)     
+        else:
+            return self.findouterdelimiter(s[1:], endpos+1, counter, openchar, closerchar)
 
 
 class ApamaAmendOrder(EventParser):
@@ -104,8 +120,9 @@ class ApamaAmendOrder(EventParser):
         f,l = self.car(l)
         d['quantity'] = float(f)
         
-        f,l = self.car(l)
-        d['extra'] = self.parsedict(f)
+        d['extra'], l = self.parsestruct(l, '{', '}')
+        
+        d['origin'] = 'Apama'
         
         return d
         
@@ -115,13 +132,14 @@ class ApamaCancelOrder(EventParser):
         d = {}
         
         f,l = self.car(payload)
-        d['Id'] = f
+        d['orderId'] = f
         
         f,l = self.car(l)
         d['serviceId'] = f
         
-        f,l = self.car(l)
-        d['extra'] = self.parsedict(f)
+        d['extra'], l = self.parsestruct(l, '{', '}')
+        
+        d['origin'] = 'Apama'
         
         return d
 
@@ -190,8 +208,9 @@ class ApamaOrderUpdate(EventParser):
         f,l = self.car(l)
         d['status'] = f
         
-        f,l = self.car(l)
-        d['extra'] = self.parsedict(f)
+        d['extra'], l = self.parsestruct(l, '{', '}')
+        
+        d['origin'] = 'Apama'
         
         return d
 
@@ -236,8 +255,9 @@ class ApamaNewOrder(EventParser):
         f,l = self.car(l)
         d['ownerId'] = f
         
-        f,l = self.car(l)
-        d['extra'] = self.parsedict(f)
+        d['extra'], l = self.parsestruct(l, '{', '}')
+        
+        d['origin'] = 'Apama'
         
         return d
 
@@ -306,17 +326,20 @@ class FIXExecutionReport(EventParser):
         f,l = self.car(l)
         d['AvgPx'] = float(f)
         
-        f,l = self.car(l)
-        d['NoPartyIDs'] = self.parsesequence(f)
+        # Skip NoPartyIDs
+        l = self.skipstruct(l, '[', ']')
         
-        f,l = self.car(l)
-        d['ContraBroker'] = self.parsesequence(f)
+        d['ContraBroker'], l = self.parsestruct(l, '[', ']')
         
-        f,l = self.car(l)
-        d['Timestamps'] = self.parsedict(f)
+        d['Timestamps'], l = self.parsestruct(l, '{', '}')
         
-        f,l = self.car(l)
-        d['Extra'] = self.parsedict(f)
+        d['extra'], l = self.parsestruct(l, '{', '}')
+        
+        d['origin'] = 'FIX'
+        
+        d['orderId'] = None
+        
+        return d
 
 class FIXNewOrderSingleParser(EventParser):
     def parse(self, payload):
@@ -356,14 +379,14 @@ class FIXNewOrderSingleParser(EventParser):
         f,l = self.car(l)
         d['Price'] = float(f)
         
-        f,l = self.car(l)
-        d['NoPartyIDs'] = self.parsesequence(f)
+        # Skip NoPartyIDs
+        l = self.skipstruct(l, '[', ']')
         
-        f,l = self.car(l)
-        d['Timestamps'] = self.parsedict(f)
+        d['Timestamps'], l = self.parsestruct(l, '{', '}')
         
-        f,l = self.car(l)
-        d['Extra'] = self.parsedict(f)
+        d['extra'], l = self.parsestruct(l, '{', '}')
+        
+        d['origin'] = 'FIX'
 
         return d
 
@@ -379,7 +402,7 @@ class FIXOrderCancelReplaceRequest(EventParser):
         d['SESSION'] = f
         
         f,l = self.car(l)
-        d['OrderID'] = f
+        d['orderId'] = f
         
         f,l = self.car(l)
         d['OrigClOrdID'] = f
@@ -411,11 +434,11 @@ class FIXOrderCancelReplaceRequest(EventParser):
         f,l = self.car(l)
         d['Price'] = float(f)
         
-        f,l = self.car(l)
-        d['Timestamps'] = self.parsedict(f)
+        d['Timestamps'], l = self.parsestruct(l, '{', '}')
         
-        f,l = self.car(l)
-        d['Extra'] = self.parsedict(f)
+        d['extra'], l = self.parsestruct(l, '{', '}')
+        
+        d['origin'] = 'FIX'
         
         return d
 
@@ -434,7 +457,7 @@ class FIXOrderCancelRequest(EventParser):
         d['OrigClOrdID'] = f
         
         f,l = self.car(l)
-        d['OrderID'] = f
+        d['orderId'] = f
         
         f,l = self.car(l)
         d['ClOrdID'] = f
@@ -454,11 +477,11 @@ class FIXOrderCancelRequest(EventParser):
         f,l = self.car(l)
         d['OrderQty'] = float(f)
         
-        f,l = self.car(l)
-        d['Timestamps'] = self.parsedict(f)
+        d['Timestamps'], l = self.parsestruct(l, '{', '}')
         
-        f,l = self.car(l)
-        d['Extra'] = self.parsedict(f)
+        d['extra'], l = self.parsestruct(l, '{', '}')
+        
+        d['origin'] = 'FIX'
         
         return d
 
