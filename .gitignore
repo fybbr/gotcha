@@ -46,5 +46,12 @@ Temporary Items
 # My inserts
 .metadata/
 Logs/
+logs/
+plots/
+.spyderproject
 *.sqlite
 *.log
+*.tar
+*.zip
+*.gz
+*.rar
