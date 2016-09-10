@@ -9,7 +9,7 @@ import pandas as pd
 from os import walk
 from os.path import join
  
-LOGDIR = '..\\Logs'
+LOGDIR = '..\\logs2'
 #LOGFILE = 'FIX.4.4-E2MUS-SGNUS.messages.current.log'
 
 # Filter for messages and tags
@@ -25,11 +25,14 @@ for (dirpath, dirnames, filenames) in walk(LOGDIR):
 stats = []
 for _file in _files:
     LOGFILE = join(dirpath, _file)   
-    print '\nProcessando log', LOGFILE, '...'
+    print '\n\n*** Processing logfile', LOGFILE, '...'
     rows = []
     with open(LOGFILE) as f:
         for line in f:
-            timestamp, body = line.split(' : ')
+            try:
+                timestamp, body = line.split(' : ')
+            except:
+                print 'Could not parse this line:', line
             
             row_dict = {}
             
@@ -67,7 +70,7 @@ for _file in _files:
     t1 = pd.to_timedelta('00:00:01.000000')
     t2 = pd.to_timedelta('00:00:00.100000')
     x = ClOrdID_grp['52'].apply(lambda x: x - x.shift(1))
-    x = x[(x < t1) & (x > t2)]
+    #x = x[(x < t1) & (x > t2)]
     xdesc = x.describe()
     xdesc['date'] = df['52'][0]
 
@@ -75,45 +78,5 @@ for _file in _files:
 
 # Persiste the statistics dataframe
 stats_df = pd.DataFrame(stats)
-out_filename = join(dirpath,'FIXstats.pkl')
+out_filename = join('..\\stats','FIXstats.pkl')
 stats_df.to_pickle(out_filename)
-
-'''
-# Read persisted DF
-df = pd.read_pickle(file_name)
-
-stats_df.assign(dt = lambda x: pd.to_datetime(x.date))
-
-# Ploting
-import pandas as pd
-import numpy as np
-import matplotlib
-import matplotlib.pyplot as plt
-%matplotlib inline
-matplotlib.style.use('ggplot')
-stats_df['mean'].astype('timedelta64[ms]').plot() ou hist()
-stats_df.plot(x=pd.to_datetime(stats_df.date),y='count'
-stats_df.plot(x=pd.to_datetime(stats_df.date), y='mean')
-
-# Converte o tipo de uma col
-sdf['mean'] = sdf['mean'].astype('timedelta64[ms]')
-
-# Grouping
-ClOrdID_grp.first()
-ClOrdID_grp.last()
-ClOrdID_grp.get_group('xxxx')
-grouped['C'].agg([np.sum, np.mean, np.std])
-
-.describe()
-.size()
-
-t = pd.to_timedelta('00:00:01.000000')
-t2 = pd.to_timedelta('00:00:00.100000')
-x[(x < t) & (x > t2)].describe()
-
-for name, group in ClOrdID_grp:
-    print(group)
-    
-df1.change.shift(1) - df1.change
-
-'''

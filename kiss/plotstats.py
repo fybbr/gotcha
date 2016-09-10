@@ -6,18 +6,29 @@ import matplotlib
 import matplotlib.pyplot as plt
 matplotlib.style.use('ggplot')
 
-# Load DataFrame from file
-filename = join('..\\Logs','FIXstats.pkl')
-stats_df = pd.read_pickle(filename)
-
-# Plot
-stats_df['mean'] = stats_df['mean'].astype('timedelta64[ms]')
-stats_df['std'] = stats_df['std'].astype('timedelta64[ms]')
-stats_df['min'] = stats_df['min'].astype('timedelta64[ms]')
-stats_df['max'] = stats_df['max'].astype('timedelta64[ms]')
-stats_df['25%'] = stats_df['25%'].astype('timedelta64[ms]')
-stats_df['75%'] = stats_df['75%'].astype('timedelta64[ms]')
-stats_df.plot(x=pd.to_datetime(stats_df.date), y=['min', '25%', '75%', 'mean'])
-stats_df.plot(x=pd.to_datetime(stats_df.date), y=['std'])
-stats_df.plot(x=pd.to_datetime(stats_df.date), y=['max'])
-stats_df.plot(x=pd.to_datetime(stats_df.date), y=['count'])
+def plot(file_name, chart_title):
+    
+    # Load DataFrame from file
+    file_name = join('..\\stats',file_name)
+    stats_df = pd.read_pickle(file_name)
+    sdf = stats_df.copy()
+    sdf = sdf.dropna()
+    
+    sdf['mean'] = sdf['mean'].astype('timedelta64[ms]')
+    sdf['std'] = sdf['std'].astype('timedelta64[ms]')
+    sdf['min'] = sdf['min'].astype('timedelta64[ms]')
+    sdf['max'] = sdf['max'].astype('timedelta64[ms]')
+    sdf['25%'] = sdf['25%'].astype('timedelta64[ms]')
+    sdf['75%'] = sdf['75%'].astype('timedelta64[ms]')
+    
+    # Plot
+    p1 = sdf.plot(x=pd.to_datetime(sdf.date), y=['min', '25%', '75%', 'mean'], title=chart_title)
+    p1.set_ylabel('ms')    
+    
+    p2 = sdf.plot(x=pd.to_datetime(sdf.date), y=['std'], title=chart_title)
+    p2.set_ylabel('ms')   
+    
+    p3 = sdf.plot(x=pd.to_datetime(sdf.date), y=['max'], ylim=50, title=chart_title)
+    p3.set_ylabel('ms')
+    
+    sdf.plot(x=pd.to_datetime(sdf.date), y=['count'], title=chart_title)
