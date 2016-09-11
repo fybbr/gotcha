@@ -2,6 +2,7 @@
 
 from os.path import join
 import pandas as pd
+import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 matplotlib.style.use('ggplot')
@@ -14,6 +15,10 @@ def plot(file_name, chart_title):
     sdf = stats_df.copy()
     sdf = sdf.dropna()
     
+    # Remove outliers
+    sdf = sdf[np.abs(sdf['mean'] - sdf['mean'].mean()) <= (2 * sdf['mean'].std())]    
+    
+    # Convert to timedelta64
     sdf['mean'] = sdf['mean'].astype('timedelta64[ms]')
     sdf['std'] = sdf['std'].astype('timedelta64[ms]')
     sdf['min'] = sdf['min'].astype('timedelta64[ms]')
