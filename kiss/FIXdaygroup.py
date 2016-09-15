@@ -1,5 +1,12 @@
 # -*- coding: utf-8 -*-
 """
+Created on Thu Sep 15 14:54:26 2016
+
+@author: Fabio Bissolotti
+"""
+
+# -*- coding: utf-8 -*-
+"""
 Created on Wed Sep 07 10:30:03 2016
 
 @author: Fábio Bissolotti
@@ -13,7 +20,7 @@ LOGDIR = '..\\logs3'
 #LOGFILE = 'FIX.4.4-E2MUS-SGNUS.messages.current.log'
 
 # Filter for messages and tags
-tags = ['11', '35', '52', '150']
+tags = ['11', '35', '52', '100', '150']
 #tags = ['11', '35', '37', '52', '39', '40', '55', '100', '150', '207', '5149']
 status = ['0', '6', 'E' ]
 
@@ -62,12 +69,23 @@ for _file in _files:
     
     ClOrdID_grp = df.groupby('11')
     
+    # Fill missing ExecID tags (100) 
+    route_df = ClOrdID_grp['100'].fillna(method='ffill')
+    route_df = route_df.to_frame()
+    route_df.columns = ['route']
+    
     # Time diferences
     t1 = pd.to_timedelta('00:00:01.000000')
     t2 = pd.to_timedelta('00:00:00.000000')
-    x = ClOrdID_grp['52'].apply(lambda x: x - x.shift(1))
-    x = x[(x < t1) & (x > t2)]
-    #x = x[np.abs(x['mean'] - x['mean'].mean()) <= (2 * x['mean'].std())]
+    delta = ClOrdID_grp['52'].apply(lambda x: x - x.shift(1))
+    delta = delta[(delta < t1) & (delta > t2)]
+    delta_df = delta.to_frame()
+    delta_df.columns = ['delta']
+    
+    # Join Routes and Deltas
+    plt_df = delta_df.join(route_df)
+    plt_df['delta'] = plt_df['delta'].astype('timedelta64[ms]')
 
-    x = x.astype('timedelta64[ms]')
-    x.plot()
+    for name, group in plt_df.groupby('route'):
+        group.plot(title=str(name))
+
