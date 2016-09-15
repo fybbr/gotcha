@@ -68,9 +68,9 @@ for _file in _files:
     
     # Time diferences
     t1 = pd.to_timedelta('00:00:01.000000')
-    t2 = pd.to_timedelta('00:00:00.100000')
+    t2 = pd.to_timedelta('00:00:00.000000')
     x = ClOrdID_grp['52'].apply(lambda x: x - x.shift(1))
-    #x = x[(x < t1) & (x > t2)]
+    x = x[(x < t1) & (x > t2)]
     #x = x[np.abs(x['mean'] - x['mean'].mean()) <= (2 * x['mean'].std())]
     xdesc = x.describe()
     xdesc['date'] = df['52'][0]

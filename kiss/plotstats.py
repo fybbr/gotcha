@@ -37,3 +37,5 @@ def plot(file_name, chart_title):
     p3.set_ylabel('ms')
     
     sdf.plot(x=pd.to_datetime(sdf.date), y=['count'], title=chart_title)
+    
+    return sdf
