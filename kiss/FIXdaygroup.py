@@ -87,5 +87,7 @@ for _file in _files:
     plt_df['delta'] = plt_df['delta'].astype('timedelta64[ms]')
 
     for name, group in plt_df.groupby('route'):
+        print '*** Ploting', name
         group.plot(title=str(name))
 
+print '*** Done!'
