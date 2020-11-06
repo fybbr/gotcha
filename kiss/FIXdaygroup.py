@@ -1,12 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Sep 15 14:54:26 2016
-
-@author: Fabio Bissolotti
-"""
-
-# -*- coding: utf-8 -*-
-"""
 Created on Wed Sep 07 10:30:03 2016
 
 @author: Fábio Bissolotti
@@ -16,7 +9,7 @@ import pandas as pd
 from os import walk
 from os.path import join
  
-LOGDIR = '..\\logs3'
+LOGDIR = '..\\logs-xp'
 #LOGFILE = 'FIX.4.4-E2MUS-SGNUS.messages.current.log'
 
 # Filter for messages and tags
@@ -32,14 +25,14 @@ for (dirpath, dirnames, filenames) in walk(LOGDIR):
 stats = []
 for _file in _files:
     LOGFILE = join(dirpath, _file)   
-    print '\n\n*** Processing logfile', LOGFILE, '...'
+    print('\n\n*** Processing logfile', LOGFILE, '...')
     rows = []
     with open(LOGFILE) as f:
         for line in f:
             try:
                 timestamp, body = line.split(' : ')
             except:
-                print 'Could not parse this line:', line
+                print('Could not parse this line:', line)
             
             row_dict = {}
             
@@ -57,11 +50,11 @@ for _file in _files:
             # Message type and order status filter    
             if row_dict['35'] == 'D':
                 rows.append(row_dict)
-            elif row_dict['35'] == '8' and row_dict.has_key('150') and row_dict['150'] == '0':
+            elif row_dict['35'] == '8' and '150' in row_dict and row_dict['150'] == '0':
                 rows.append(row_dict)
     
     if rows == []:
-        print 'No application data found in this file.'
+        print('No application data found in this file.')
         continue            
             
     df = pd.DataFrame(rows)
@@ -87,7 +80,7 @@ for _file in _files:
     plt_df['delta'] = plt_df['delta'].astype('timedelta64[ms]')
 
     for name, group in plt_df.groupby('route'):
-        print '*** Ploting', name
+        print('*** Ploting', name)
         group.plot(title=str(name))
 
-print '*** Done!'
+print('*** Done!')

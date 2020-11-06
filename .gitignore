@@ -48,6 +48,7 @@ Temporary Items
 Logs/
 logs/
 plots/
+stats/
 .spyderproject
 *.sqlite
 *.log
